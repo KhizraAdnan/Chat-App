@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js"
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js"
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
 import { getDatabase, ref, push, onChildAdded, update, remove } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
 
@@ -20,13 +20,19 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const db = getDatabase(app);
 
+// ✅ Sound effect
+const clickSound = new Audio("mouse-clicks-6015 (mp3cut.net).mp3");
+
+
 //signup code
 document.getElementById('signup-btn')?.addEventListener('click', () => {
+  clickSound.play(); 
   const email = document.getElementById('signup-email').value;
   const password = document.getElementById('signup-password').value;
 
   createUserWithEmailAndPassword(auth, email, password)
     .then(() => {
+      localStorage.setItem("chatUser", email); 
       window.location.href = 'chat.html';
     })
     .catch((error) => {
@@ -36,11 +42,13 @@ document.getElementById('signup-btn')?.addEventListener('click', () => {
 
 //login code
 document.getElementById('login-btn')?.addEventListener('click', () => {
+  clickSound.play(); 
   const email = document.getElementById('login-email').value;
   const password = document.getElementById('login-password').value;
 
   signInWithEmailAndPassword(auth, email, password)
     .then(() => {
+      localStorage.setItem("chatUser", email); 
       window.location.href = 'chat.html';
     })
     .catch((error) => {
@@ -50,6 +58,7 @@ document.getElementById('login-btn')?.addEventListener('click', () => {
 
 //continue with google
 document.getElementById('google-btn')?.addEventListener('click', () => {
+  clickSound.play(); 
   signInWithPopup(auth, provider)
     .then(() => {
       window.location.href = 'chat.html';
@@ -61,8 +70,10 @@ document.getElementById('google-btn')?.addEventListener('click', () => {
 
 //logout code  
 document.getElementById("logout-btn")?.addEventListener("click", () => {
+  clickSound.play(); 
   signOut(auth)
     .then(() => {
+      localStorage.removeItem("chatUser");
       alert("Logged Out Successfully!");
       window.location.href = "index.html";
     })
@@ -89,9 +100,20 @@ document.getElementById("reset-password-link")?.addEventListener("click", (e) =>
   }
 });
 
+//onAuthState
+let currentUserEmail = null;
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUserEmail = user.email;
+    document.getElementById("username").value = user.email; // Autofill
+  }
+});
+
 
 //ChatApp code
 window.sendMessage = function () {
+  clickSound.play();
   let username = document.getElementById("username").value;
   let message = document.getElementById("message").value;
   if (username === "" || message === "") return;
@@ -99,7 +121,7 @@ window.sendMessage = function () {
 
   // Push message to Firebase
   push(ref(db, "messages"), {
-    name: username,
+    name: currentUserEmail,
     text: message
   });
   document.getElementById("message").value = ""; // Clear input
@@ -151,7 +173,7 @@ onChildAdded(ref(db, "messages"), function (snapshot) {
   let currentUser = document.getElementById("username").value;
 
   // Only show for own messages
-  if (data.name === currentUser && currentUser !== "") {
+  if (data.name === currentUserEmail) {
     msgElement.classList.add("self");
 
     editBtn.onclick = function () {
